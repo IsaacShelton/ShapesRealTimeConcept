@@ -1,0 +1,51 @@
+
+enum UnitKind (EMPTY, SQUARE, CIRCLE, TRIANGLE)
+enum Player (ONE, TWO)
+
+struct Unit (kind UnitKind, player Player, done bool)
+
+func emptyUnit Unit = unit(UnitKind::EMPTY, Player::ONE)
+
+func unit(kind UnitKind, player Player) Unit {
+    u POD Unit
+    u.kind = kind
+    u.player = player
+    u.done = true
+    return u
+}
+
+func randomPlayer Player = normalizedRandom() < 0.5 ? Player::ONE : Player::TWO
+
+func randomUnitKind UnitKind {
+    return (randomInt(3) + 1) as UnitKind
+}
+
+func draw(this *Unit, x, y float) {
+    texture *CaptTexture = this.getTexture()
+    unless texture, return
+
+    captDrawTexture(*texture, x, y, 32.0f, 32.0f)
+}
+
+func isPlayerOne(this *Unit) bool = this.player == Player::ONE
+
+func otherPlayer(player Player) Player = player == Player::ONE ? Player::TWO : Player::ONE
+
+func getTexture(this *Unit) *CaptTexture {
+    exhaustive switch this.kind {
+    case UnitKind::EMPTY, return null
+    case UnitKind::SQUARE, return this.isPlayerOne() ? &textures.square_b : &textures.square_r
+    case UnitKind::CIRCLE, return this.isPlayerOne() ? &textures.circle_b : &textures.circle_r
+    case UnitKind::TRIANGLE, return this.isPlayerOne() ? &textures.triangle_b : &textures.triangle_r
+    }
+    return null
+}
+
+struct Visual (before, after GridCoord)
+
+func visual(before, after GridCoord) Visual {
+    v POD Visual
+    v.before = before
+    v.after = after
+    return v
+}

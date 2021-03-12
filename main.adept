@@ -1,0 +1,126 @@
+
+pragma compiler_version '2.5'
+
+import basics
+import captain
+import AABB
+import "GameData.adept"
+import "Textures.adept"
+import "drawUtils.adept"
+import "Text.adept"
+import "unitLogic.adept"
+
+/*
+    CONTROLS:
+
+    Q - Place Square
+    W - Place Circle
+    E - Place Triangle
+
+    Square always moves forward, can kill anything that isn't triangle
+    Triangle can attack diagonally or move forward, can kill anything that isn't circle
+    Circle can attack diagonally and forward or move forward, can kill anything that isn't square
+*/
+
+// Number of seconds that is used to animate each turn
+define TURN_TIME = 3.0f
+
+func main {
+    captOnSetup(func &onSetup)
+    captOnStep(func &onStep)
+    captOnKey(func &onKey)
+    captOnClick(func &onClick, true)
+    captOnDraw(func &onDraw)
+    captOnExit(func &onExit)
+    captStart('Shapes', true)
+}
+
+func onSetup {
+    textures.load()
+    gamedata.load()
+}
+
+func onExit {
+    textures.unload()
+}
+
+func onStep {
+    key int = 0
+    unless key, key = captKeyHeld(GLFW_KEY_Q) ? GLFW_KEY_Q : 0
+    unless key, key = captKeyHeld(GLFW_KEY_W) ? GLFW_KEY_W : 0
+    unless key, key = captKeyHeld(GLFW_KEY_E) ? GLFW_KEY_E : 0
+
+    if key {
+        captMouseViewPosition(undef mouseX float, undef mouseY float)
+        getBoardPosition(undef boardX float, undef boardY float)
+
+        coord GridCoord = gridCoord(cast int ((mouseX - boardX) / 32.0f), cast int ((mouseY - boardY) / 32.0f))
+        unless gamedata.board.isValid(coord), return
+
+        switch key {
+        case GLFW_KEY_Q, gamedata.board[coord] = unit(UnitKind::SQUARE, Player::ONE)
+        case GLFW_KEY_W, gamedata.board[coord] = unit(UnitKind::CIRCLE, Player::ONE)
+        case GLFW_KEY_E, gamedata.board[coord] = unit(UnitKind::TRIANGLE, Player::ONE)
+        }
+    }
+
+    if glfwGetTime() - gamedata.whenLastTurn >= TURN_TIME {
+        gamedata.board.performLogic(gamedata.advantage, &gamedata.visuals)
+        gamedata.whenLastTurn = glfwGetTime()
+        gamedata.advantage = otherPlayer(gamedata.advantage)
+    }
+}
+
+func onKey(key, _scancode, action, _mods int) {
+    unless action == GLFW_PRESS, return
+
+    // Reset on 'space' key
+    if key == GLFW_KEY_SPACE, gamedata.reset(); return
+}
+
+func onClick(_mouse_x, _mouse_y float, _button int) {
+        
+}
+
+func onDraw {
+    drawTiled(textures.background, 0.0f, 0.0f, 96.0f, 96.0f, captViewWidth(), captViewHeight())
+
+    getBoardPosition(undef boardX float, undef boardY float)
+    drawBoard(boardX, boardY)
+}
+
+func drawBoard(startX, startY float) {
+    captDrawOpacity(0.5f)
+
+    repeat gamedata.board.w {
+        x usize = idx
+        repeat gamedata.board.h {
+            y usize = idx
+
+            gamedata.board[gridCoord(x, y)].draw(startX + x as float * 32.0f, startY + y as float * 32.0f)
+        }
+    }
+
+    captDrawOpacity(1.0f)
+
+    now double = glfwGetTime()
+
+    each Visual in gamedata.visuals {
+        beforeX float = startX + it.before.x as float * 32.0f
+        beforeY float = startY + it.before.y as float * 32.0f
+        afterX float = startX + it.after.x as float * 32.0f
+        afterY float = startY + it.after.y as float * 32.0f
+
+        t float = cast float (now - gamedata.whenLastTurn) / TURN_TIME
+        t = clamp(t, 0.0f, 1.0f)
+        tInv float = 1.0f - t
+
+        unit *Unit = &gamedata.board[it.after]
+        unit.draw(afterX * t + beforeX * tInv, afterY * t + beforeY * tInv)
+    }
+}
+
+func getBoardPosition(out x, y *float) {
+    *x = captViewWidth() / 2.0f - 32.0f * 0.5f * cast float gamedata.board.w
+    *y = captViewHeight() / 2.0f - 32.0f * 0.5f * cast float gamedata.board.h
+}

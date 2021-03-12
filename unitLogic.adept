@@ -1,0 +1,121 @@
+
+import "Grid.adept"
+import "Unit.adept"
+
+func performLogic(this *<Unit> Grid, advantage Player, visuals *<Visual> List) {
+    this.markAllUndone()
+    visuals.clear()
+
+    if advantage != Player::ONE, this.flipY()
+
+    repeat this.w {
+        x int = idx as int
+        enemy *Unit = &(*this)[gridCoord(x, this.h - 1)]
+
+        if enemy.kind != UnitKind::EMPTY && enemy.player != advantage {
+            *enemy = emptyUnit()
+        }
+    }
+
+    repeat this.w {
+        x int = idx as int
+        enemy *Unit = &(*this)[gridCoord(x, this.h - 1)]
+
+        /* AI */
+        if enemy.kind == UnitKind::EMPTY && enemy.player != advantage && advantage == Player::TWO {
+            *enemy = unit(randomUnitKind(), Player::TWO)
+            enemy.done = false
+        }
+    }
+
+    repeat this.w {
+        x int = idx as int
+        repeat this.h {
+            y int = idx as int
+
+            this.performLogicForUnit(advantage, x, y, visuals)
+        }
+    }
+
+    if advantage != Player::ONE {
+        each Visual in *visuals {
+            it.before.y = this.h - it.before.y - 1
+            it.after.y = this.h - it.after.y - 1
+        }
+
+        this.flipY()
+    }
+}
+
+func performLogicForUnit(this *<Unit> Grid, advantage Player, x, y int, visuals *<Visual> List) {
+    coord GridCoord = gridCoord(x, y)
+    unit *Unit = &(*this)[coord]
+
+    if unit.done, return
+
+    if unit.player != advantage {
+        
+        return
+    }
+
+    attackSpots <GridCoord> List = unit.getAttackSpots(x, y)
+
+    each GridCoord in attackSpots {
+        unless this.isValid(it), continue
+
+        enemy *Unit = &(*this)[it]
+
+        if enemy.kind != UnitKind::EMPTY && enemy.player != advantage && unit.canBeat(enemy.kind) {
+            unit.done = true
+            *enemy = *unit
+            *unit = emptyUnit()
+            visuals.add(visual(coord, it))
+            return
+        }
+    }
+
+    const moveTarget GridCoord = gridCoord(x, y - 1)
+
+    if this.isValid(moveTarget) && (*this)[moveTarget].kind == UnitKind::EMPTY {
+        unit.done = true
+        (*this)[moveTarget] = *unit
+        *unit = emptyUnit()
+        visuals.add(visual(coord, moveTarget))
+        return
+    }
+}
+
+func getAttackSpots(this *Unit, x, y int) <GridCoord> List {
+    list <GridCoord> List
+
+    exhaustive switch this.kind {
+    case UnitKind::EMPTY /*do nothing */
+    case UnitKind::SQUARE
+        list.add(gridCoord(x, y - 1))
+    case UnitKind::CIRCLE
+        list.add(gridCoord(x, y - 1))
+        list.add(gridCoord(x - 1, y - 1))
+        list.add(gridCoord(x + 1, y - 1))
+    case UnitKind::TRIANGLE
+        list.add(gridCoord(x - 1, y - 1))
+        list.add(gridCoord(x + 1, y - 1))
+    }
+
+    return list.commit()
+}
+
+func markAllUndone(this *<Unit> Grid) {
+    each Unit in static *this {
+        it.done = false
+    }
+}
+
+func canBeat(this *Unit, enemy_kind UnitKind) bool {
+    exhaustive switch this.kind {
+    case UnitKind::EMPTY, return false
+    case UnitKind::TRIANGLE, return enemy_kind != UnitKind::CIRCLE
+    case UnitKind::SQUARE, return enemy_kind != UnitKind::TRIANGLE
+    case UnitKind::CIRCLE, return enemy_kind != UnitKind::SQUARE
+    }
+    return false
+}

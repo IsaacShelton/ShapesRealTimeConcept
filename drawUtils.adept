@@ -1,0 +1,22 @@
+
+import captain
+import "Text.adept"
+
+func drawTiled(texture POD CaptTexture, startX, startY, tileW, tileH, fullW, fullH float) {
+    for x float = startX; x < startX + fullW; x += tileW {
+        for y float = startY; y < startY + fullH; y += tileH {
+            captDrawTexture(texture, x, y, tileW, tileH)
+        }
+    }
+}
+
+func snap(value $T~__number__, snapTo $~T) $T {
+    remainder $T = value % snapTo
+    return remainder <= snapTo / 2 as $T ? value - remainder : value + snapTo - remainder
+}
+
+func drawText(content String, x, y float) {
+    text Text = text(content)
+    text.draw(x, y, textures.font)
+    text.destroy()
+}

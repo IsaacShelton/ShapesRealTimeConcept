@@ -1,0 +1,45 @@
+
+import String
+import cstdio
+import captain
+import where
+
+struct Textures (
+    square_b,
+    circle_b,
+    triangle_b,
+    square_r,
+    circle_r,
+    triangle_r,
+    background,
+    font CaptTexture
+) {
+    func load {
+        assetsFolder String = where() + "assets/"
+        datatype *AnyStructType = typeinfo Textures as *AnyStructType
+
+        repeat datatype.length {
+            unless datatype.members[idx] == typeinfo CaptTexture, continue
+
+            texture *CaptTexture = cast *CaptTexture (this + cast ptr (datatype.offsets[idx]))
+            basename String = stringConstant(datatype.member_names[idx]) + ".png"
+            *texture = captTexture(assetsFolder + basename, false)
+
+            unless texture.isValid() {
+                printf("Failed to load texture \"%S\"\n", basename)
+            }
+        }
+    }
+
+    func unload {
+        datatype *AnyStructType = typeinfo Textures as *AnyStructType
+
+        repeat datatype.length {
+            unless datatype.members[idx] == typeinfo CaptTexture, continue
+            texture *CaptTexture = cast *CaptTexture (this + cast ptr (datatype.offsets[idx]))
+            texture.destroy()
+        }
+    }
+}
+
+textures Textures

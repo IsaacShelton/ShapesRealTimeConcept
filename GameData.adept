@@ -1,0 +1,32 @@
+
+import List
+import random
+import "Unit.adept"
+import "Grid.adept"
+
+struct GameData (
+    board <Unit> Grid,
+    whenLastTurn double,
+    advantage Player,
+    visuals <Visual> List
+) {
+    func load {
+        randomize()
+        this.board = grid(14, 14, emptyUnit())
+        this.whenLastTurn = glfwGetTime()
+        this.advantage = Player::ONE
+
+        repeat 100 {
+            randomCoord GridCoord = gridCoord(randomInt(this.board.w), randomInt(this.board.h))
+            this.board[randomCoord] = unit(randomUnitKind(), randomPlayer())
+        }
+    }
+
+    func reset {
+        this.__defer__()
+        memset(this, 0, sizeof(*this))
+        this.load()
+    }
+}
+
+gamedata GameData
